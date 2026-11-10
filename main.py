@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 
 from kivy.app import App
-from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -13,8 +12,6 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
-
-FILE_DATA = "data_tahanan.json"
 
 BLOK_FIELDS = [
     ("sat_reskrim", "Sat Reskrim"),
@@ -66,80 +63,7 @@ JABATAN_FIELDS = [
 ]
 
 
-def struktur_baru():
-    return {
-        "blok": {
-            str(i): {key: 0 for key, _ in BLOK_FIELDS}
-            for i in range(1, 15)
-        },
-        "polri": {
-            "tabel": {
-                row: {key: 0 for key, _ in KASUS_FIELDS}
-                for row, _ in POLRI_ROWS
-            },
-            "demo": {key: 0 for key, _ in DEMO_FIELDS},
-            "mutasi": {
-                "bon": {key: 0 for key, _ in MUTASI_FIELDS},
-                "tahap2": {key: 0 for key, _ in MUTASI_FIELDS},
-                "masuk": {key: 0 for key, _ in MUTASI_FIELDS},
-            },
-        },
-        "titipan": {
-            "tabel": {
-                row: {key: 0 for key, _ in KASUS_FIELDS}
-                for row, _ in TITIPAN_ROWS
-            },
-            "demo": {key: 0 for key, _ in DEMO_FIELDS},
-            "mutasi": {
-                "bon": {key: 0 for key, _ in MUTASI_FIELDS},
-                "tahap2": {key: 0 for key, _ in MUTASI_FIELDS},
-                "masuk": {key: 0 for key, _ in MUTASI_FIELDS},
-            },
-        },
-    }
-
-
-def muat_data():
-    data = struktur_baru()
-
-    if not os.path.exists(FILE_DATA):
-        return data
-
-    try:
-        with open(FILE_DATA, "r", encoding="utf-8") as file:
-            simpanan = json.load(file)
-
-        data["blok"].update(simpanan.get("blok", {}))
-        data["polri"].update(simpanan.get("polri", {}))
-        data["titipan"].update(simpanan.get("titipan", {}))
-
-        for kategori in ["polri", "titipan"]:
-            mutasi_lama = data[kategori].get("mutasi", {})
-
-            data[kategori]["mutasi"] = {
-                "bon": mutasi_lama.get(
-                    "bon", {"laki": 0, "prmpuan": 0}
-                ),
-                "tahap2": mutasi_lama.get(
-                    "tahap2", {"laki": 0, "prmpuan": 0}
-                ),
-                "masuk": mutasi_lama.get(
-                    "masuk", {"laki": 0, "prmpuan": 0}
-                ),
-            }
-
-    except (json.JSONDecodeError, OSError):
-        pass
-
-    return data
-
-
-def simpan_data(data):
-    with open(FILE_DATA, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2, ensure_ascii=False)
-
-
-def ambil_angka(teks):
+def angka(teks):
     try:
         return max(0, int(teks or 0))
     except (TypeError, ValueError):
@@ -151,14 +75,19 @@ class TahananApp(App):
         self.title = "Sistem Tahanan"
         self.mode_gelap = True
 
-        self.data = muat_data()
+        folder = self.user_data_dir
+        os.makedirs(folder, exist_ok=True)
+        self.file_data = os.path.join(folder, "data_tahanan.json")
 
+        self.data = self.muat_data()
         self.data_laporan = {
             "jabatan_1": "",
             "jabatan_2": "",
             "jabatan_3": "",
             "jabatan_4": "",
         }
+
+        Window.clearcolor = self.warna()["latar"]
 
         self.root = BoxLayout(orientation="vertical")
         self.buat_tampilan()
@@ -168,36 +97,89 @@ class TahananApp(App):
         if self.mode_gelap:
             return {
                 "latar": (0.08, 0.09, 0.12, 1),
-                "kartu": (0.14, 0.16, 0.2, 1),
+                "kartu": (0.14, 0.16, 0.20, 1),
                 "teks": (0.93, 0.95, 0.98, 1),
-                "redup": (0.7, 0.75, 0.82, 1),
+                "redup": (0.70, 0.75, 0.82, 1),
                 "biru": (0.16, 0.45, 0.85, 1),
-                "hijau": (0.1, 0.6, 0.4, 1),
-                "oranye": (0.9, 0.55, 0.1, 1),
+                "hijau": (0.10, 0.60, 0.40, 1),
+                "oranye": (0.90, 0.55, 0.10, 1),
                 "merah": (0.85, 0.25, 0.25, 1),
-                "ungu": (0.55, 0.35, 0.9, 1),
-                "teal": (0.1, 0.65, 0.65, 1),
-                "input": (0.2, 0.22, 0.27, 1),
+                "ungu": (0.55, 0.35, 0.90, 1),
+                "teal": (0.10, 0.65, 0.65, 1),
+                "input": (0.20, 0.22, 0.27, 1),
             }
 
         return {
             "latar": (0.95, 0.96, 0.98, 1),
             "kartu": (1, 1, 1, 1),
-            "teks": (0.1, 0.15, 0.25, 1),
-            "redup": (0.4, 0.45, 0.52, 1),
+            "teks": (0.10, 0.15, 0.25, 1),
+            "redup": (0.40, 0.45, 0.52, 1),
             "biru": (0.08, 0.25, 0.55, 1),
-            "hijau": (0.05, 0.45, 0.3, 1),
+            "hijau": (0.05, 0.45, 0.30, 1),
             "oranye": (0.75, 0.45, 0.05, 1),
-            "merah": (0.75, 0.2, 0.2, 1),
+            "merah": (0.75, 0.20, 0.20, 1),
             "ungu": (0.45, 0.25, 0.75, 1),
-            "teal": (0.05, 0.5, 0.5, 1),
+            "teal": (0.05, 0.50, 0.50, 1),
             "input": (0.94, 0.96, 0.99, 1),
         }
 
-    def buat_tampilan(self):
-        warna = self.warna()
-        Window.clearcolor = warna["latar"]
+    def muat_data(self):
+        data = self.struktur_baru()
 
+        if not os.path.exists(self.file_data):
+            return data
+
+        try:
+            with open(self.file_data, "r", encoding="utf-8") as file:
+                lama = json.load(file)
+
+            data["blok"].update(lama.get("blok", {}))
+            data["polri"].update(lama.get("polri", {}))
+            data["titipan"].update(lama.get("titipan", {}))
+        except (json.JSONDecodeError, OSError):
+            pass
+
+        return data
+
+    def struktur_baru(self):
+        return {
+            "blok": {
+                str(i): {key: 0 for key, _ in BLOK_FIELDS}
+                for i in range(1, 15)
+            },
+            "polri": {
+                "tabel": {
+                    row: {key: 0 for key, _ in KASUS_FIELDS}
+                    for row, _ in POLRI_ROWS
+                },
+                "demo": {key: 0 for key, _ in DEMO_FIELDS},
+                "mutasi": self.mutasi_baru(),
+            },
+            "titipan": {
+                "tabel": {
+                    row: {key: 0 for key, _ in KASUS_FIELDS}
+                    for row, _ in TITIPAN_ROWS
+                },
+                "demo": {key: 0 for key, _ in DEMO_FIELDS},
+                "mutasi": self.mutasi_baru(),
+            },
+        }
+
+    def mutasi_baru(self):
+        return {
+            "bon": {key: 0 for key, _ in MUTASI_FIELDS},
+            "tahap2": {key: 0 for key, _ in MUTASI_FIELDS},
+            "masuk": {key: 0 for key, _ in MUTASI_FIELDS},
+        }
+
+    def simpan_data(self):
+        try:
+            with open(self.file_data, "w", encoding="utf-8") as file:
+                json.dump(self.data, file, indent=2, ensure_ascii=False)
+        except OSError:
+            pass
+
+    def buat_tampilan(self):
         self.root.clear_widgets()
 
         utama = BoxLayout(
@@ -216,8 +198,8 @@ class TahananApp(App):
             text="SISTEM TAHANAN",
             bold=True,
             font_size="17sp",
-            color=warna["teks"],
-            size_hint=(0.6, 1),
+            color=self.warna()["teks"],
+            size_hint=(0.55, 1),
             halign="left",
             valign="middle",
         )
@@ -228,10 +210,10 @@ class TahananApp(App):
             text="Mode",
             bold=True,
             font_size="12sp",
-            size_hint=(0.18, 1),
+            size_hint=(0.20, 1),
             background_normal="",
             background_down="",
-            background_color=warna["biru"],
+            background_color=self.warna()["biru"],
             color=(1, 1, 1, 1),
         )
         tombol_mode.bind(on_press=self.ganti_mode)
@@ -241,10 +223,10 @@ class TahananApp(App):
             text="Menu",
             bold=True,
             font_size="12sp",
-            size_hint=(0.22, 1),
+            size_hint=(0.25, 1),
             background_normal="",
             background_down="",
-            background_color=warna["hijau"],
+            background_color=self.warna()["hijau"],
             color=(1, 1, 1, 1),
         )
         tombol_menu.bind(on_press=self.buka_menu)
@@ -260,11 +242,10 @@ class TahananApp(App):
 
     def ganti_mode(self, instance):
         self.mode_gelap = not self.mode_gelap
+        Window.clearcolor = self.warna()["latar"]
         self.buat_tampilan()
 
     def buka_menu(self, instance):
-        warna = self.warna()
-
         isi = BoxLayout(
             orientation="vertical",
             padding=dp(12),
@@ -274,13 +255,13 @@ class TahananApp(App):
         isi.bind(minimum_height=isi.setter("height"))
 
         daftar = [
-            ("Blok", warna["biru"]),
-            ("Polri", warna["teal"]),
-            ("Titipan", warna["ungu"]),
-            ("Bon Polri", warna["oranye"]),
-            ("Bon Titipan", warna["merah"]),
-            ("Laporan", warna["hijau"]),
-            ("Rekap", warna["biru"]),
+            ("Blok", self.warna()["biru"]),
+            ("Polri", self.warna()["teal"]),
+            ("Titipan", self.warna()["ungu"]),
+            ("Bon Polri", self.warna()["oranye"]),
+            ("Bon Titipan", self.warna()["merah"]),
+            ("Laporan", self.warna()["hijau"]),
+            ("Rekap", self.warna()["biru"]),
         ]
 
         for nama, warna_tombol in daftar:
@@ -304,7 +285,7 @@ class TahananApp(App):
             title="Pilih Halaman",
             title_size="14sp",
             content=isi,
-            size_hint=(0.8, 0.7),
+            size_hint=(0.85, 0.75),
             auto_dismiss=True,
         )
         self.popup_menu.open()
@@ -331,7 +312,7 @@ class TahananApp(App):
         return isi
 
     def buat_label(self, teks, ukuran="14sp", tebal=False, warna=None):
-        return Label(
+        label = Label(
             text=teks,
             bold=tebal,
             font_size=ukuran,
@@ -341,8 +322,10 @@ class TahananApp(App):
             halign="left",
             valign="middle",
         )
+        label.bind(size=label.setter("text_size"))
+        return label
 
-    def buat_input_angka(self, nilai, callback):
+    def buat_input(self, nilai, callback=None):
         warna = self.warna()
 
         input_angka = TextInput(
@@ -359,12 +342,14 @@ class TahananApp(App):
             padding=[dp(10), dp(10), dp(10), dp(10)],
         )
 
-        input_angka.bind(
-            text=lambda instance, teks: callback(ambil_angka(teks))
-        )
+        if callback:
+            input_angka.bind(
+                text=lambda instance, teks: callback(angka(teks))
+            )
+
         return input_angka
 
-    def buat_baris_input(self, nama, nilai, callback):
+    def buat_baris(self, nama, nilai, callback=None):
         warna = self.warna()
 
         baris = BoxLayout(
@@ -384,14 +369,12 @@ class TahananApp(App):
         label.bind(size=label.setter("text_size"))
         baris.add_widget(label)
 
-        baris.add_widget(
-            self.buat_input_angka(nilai, callback)
-        )
-        return baris
+        input_angka = self.buat_input(nilai, callback)
+        baris.add_widget(input_angka)
 
-    def buat_form(self, judul, fields, nilai, callback, warna_border):
-        warna = self.warna()
+        return baris, input_angka
 
+    def buat_form(self, judul, fields, nilai, callback):
         kartu = BoxLayout(
             orientation="vertical",
             padding=dp(12),
@@ -401,17 +384,16 @@ class TahananApp(App):
         kartu.bind(minimum_height=kartu.setter("height"))
 
         kartu.add_widget(
-            self.buat_label(judul, "15sp", True, warna["teks"])
+            self.buat_label(judul, "15sp", True, self.warna()["teks"])
         )
 
         for key, nama in fields:
-            kartu.add_widget(
-                self.buat_baris_input(
-                    nama,
-                    nilai.get(key, 0),
-                    lambda angka, kunci=key: callback(kunci, angka),
-                )
+            baris, _ = self.buat_baris(
+                nama,
+                nilai.get(key, 0),
+                lambda angka_baru, kunci=key: callback(kunci, angka_baru),
             )
+            kartu.add_widget(baris)
 
         return kartu
 
@@ -420,30 +402,20 @@ class TahananApp(App):
 
         if nama == "Blok":
             self.konten.add_widget(self.halaman_blok())
-
         elif nama == "Polri":
             self.konten.add_widget(
                 self.halaman_kategori("polri", POLRI_ROWS, "POLRI")
             )
-
         elif nama == "Titipan":
             self.konten.add_widget(
                 self.halaman_kategori("titipan", TITIPAN_ROWS, "TITIPAN")
             )
-
         elif nama == "Bon Polri":
-            self.konten.add_widget(
-                self.halaman_mutasi("polri", "POLRI")
-            )
-
+            self.konten.add_widget(self.halaman_mutasi("polri"))
         elif nama == "Bon Titipan":
-            self.konten.add_widget(
-                self.halaman_mutasi("titipan", "TITIPAN")
-            )
-
+            self.konten.add_widget(self.halaman_mutasi("titipan"))
         elif nama == "Laporan":
             self.konten.add_widget(self.halaman_laporan())
-
         else:
             self.konten.add_widget(self.halaman_rekap())
 
@@ -451,8 +423,7 @@ class TahananApp(App):
         warna = self.warna()
         isi = self.buat_kolom()
 
-        label = self.buat_label("NOMOR BLOK", "14sp", True, warna["teks"])
-        isi.add_widget(label)
+        isi.add_widget(self.buat_label("NOMOR BLOK", "14sp", True, warna["teks"]))
 
         pilih_blok = TextInput(
             text="1",
@@ -473,13 +444,11 @@ class TahananApp(App):
         self.input_blok = {}
 
         for key, nama in BLOK_FIELDS:
-            baris = self.buat_baris_input(
+            baris, input_angka = self.buat_baris(
                 nama,
                 self.data["blok"]["1"][key],
-                lambda angka, kunci=key: None,
             )
-
-            self.input_blok[key] = baris.children[0]
+            self.input_blok[key] = input_angka
             isi.add_widget(baris)
 
         status = Label(
@@ -510,11 +479,11 @@ class TahananApp(App):
                 nomor = "1"
 
             for key, _ in BLOK_FIELDS:
-                self.data["blok"][nomor][key] = ambil_angka(
+                self.data["blok"][nomor][key] = angka(
                     self.input_blok[key].text
                 )
 
-            simpan_data(self.data)
+            self.simpan_data()
             status.text = f"Data Blok {nomor} tersimpan."
 
         tombol.bind(on_press=simpan)
@@ -524,17 +493,15 @@ class TahananApp(App):
 
     def halaman_kategori(self, kategori, rows, judul):
         isi = self.buat_kolom()
-        warna = self.warna()
 
         for row_key, row_name in rows:
             kartu = self.buat_form(
                 row_name,
                 KASUS_FIELDS,
                 self.data[kategori]["tabel"][row_key],
-                lambda kunci, angka, baris=row_key: self.simpan_nilai(
-                    kategori, "tabel", baris, kunci, angka
+                lambda kunci, angka_baru, baris=row_key: self.simpan_nilai(
+                    kategori, "tabel", baris, kunci, angka_baru
                 ),
-                warna["teal"] if kategori == "polri" else warna["ungu"],
             )
             isi.add_widget(kartu)
 
@@ -542,59 +509,40 @@ class TahananApp(App):
             f"TAH {judul}",
             DEMO_FIELDS,
             self.data[kategori]["demo"],
-            lambda kunci, angka: self.simpan_nilai(
-                kategori, "demo", None, kunci, angka
+            lambda kunci, angka_baru: self.simpan_nilai(
+                kategori, "demo", None, kunci, angka_baru
             ),
-            warna["hijau"],
         )
         isi.add_widget(kartu_demo)
 
         return self.buat_scroll(isi)
 
-    def simpan_nilai(self, kategori, jenis, baris, kunci, angka):
+    def simpan_nilai(self, kategori, jenis, baris, kunci, nilai):
         if jenis == "tabel":
-            self.data[kategori]["tabel"][baris][kunci] = angka
+            self.data[kategori]["tabel"][baris][kunci] = nilai
         else:
-            self.data[kategori]["demo"][kunci] = angka
+            self.data[kategori]["demo"][kunci] = nilai
 
-        simpan_data(self.data)
+        self.simpan_data()
 
-    def halaman_mutasi(self, kategori, judul):
+    def halaman_mutasi(self, kategori):
         isi = self.buat_kolom()
         warna = self.warna()
 
-        kartu_bon = self.buat_form(
-            "BON TAHANAN",
-            MUTASI_FIELDS,
-            self.data[kategori]["mutasi"]["bon"],
-            lambda kunci, angka: self.simpan_mutasi(
-                kategori, "bon", kunci, angka
-            ),
-            warna["oranye"],
-        )
-        isi.add_widget(kartu_bon)
-
-        kartu_tahap2 = self.buat_form(
-            "TAHAP 2",
-            MUTASI_FIELDS,
-            self.data[kategori]["mutasi"]["tahap2"],
-            lambda kunci, angka: self.simpan_mutasi(
-                kategori, "tahap2", kunci, angka
-            ),
-            warna["merah"],
-        )
-        isi.add_widget(kartu_tahap2)
-
-        kartu_masuk = self.buat_form(
-            "TAHANAN MASUK",
-            MUTASI_FIELDS,
-            self.data[kategori]["mutasi"]["masuk"],
-            lambda kunci, angka: self.simpan_mutasi(
-                kategori, "masuk", kunci, angka
-            ),
-            warna["hijau"],
-        )
-        isi.add_widget(kartu_masuk)
+        for jenis, judul in [
+            ("bon", "BON TAHANAN"),
+            ("tahap2", "TAHAP 2"),
+            ("masuk", "TAHANAN MASUK"),
+        ]:
+            kartu = self.buat_form(
+                judul,
+                MUTASI_FIELDS,
+                self.data[kategori]["mutasi"][jenis],
+                lambda kunci, angka_baru, jenis=jenis: self.simpan_mutasi(
+                    kategori, jenis, kunci, angka_baru
+                ),
+            )
+            isi.add_widget(kartu)
 
         demo = self.data[kategori]["demo"]
         mutasi = self.data[kategori]["mutasi"]
@@ -633,9 +581,9 @@ class TahananApp(App):
 
         return self.buat_scroll(isi)
 
-    def simpan_mutasi(self, kategori, jenis, kunci, angka):
-        self.data[kategori]["mutasi"][jenis][kunci] = angka
-        simpan_data(self.data)
+    def simpan_mutasi(self, kategori, jenis, kunci, nilai):
+        self.data[kategori]["mutasi"][jenis][kunci] = nilai
+        self.simpan_data()
 
     def halaman_rekap(self):
         warna = self.warna()
@@ -655,8 +603,6 @@ class TahananApp(App):
             sum(nilai.values())
             for nilai in self.data["titipan"]["tabel"].values()
         )
-
-        total_keseluruhan = total_polri + total_titipan
 
         isi.add_widget(
             self.buat_label(
@@ -687,7 +633,7 @@ class TahananApp(App):
 
         isi.add_widget(
             self.buat_label(
-                f"TOTAL KESELURUHAN: {total_keseluruhan}",
+                f"TOTAL KESELURUHAN: {total_polri + total_titipan}",
                 "18sp",
                 True,
                 warna["hijau"],
@@ -730,80 +676,6 @@ class TahananApp(App):
                     "LANTAS", "POLAIR", "TITIPAN", "TOTAL",
                 ],
                 rows_blok,
-            )
-        )
-
-        rows_polri = []
-        total_kolom_polri = {key: 0 for key, _ in KASUS_FIELDS}
-
-        for row_key, row_name in POLRI_ROWS:
-            nilai = self.data["polri"]["tabel"][row_key]
-
-            for key, _ in KASUS_FIELDS:
-                total_kolom_polri[key] += nilai[key]
-
-            rows_polri.append([
-                row_name,
-                nilai["krimum"],
-                nilai["krimsus"],
-                nilai["narkoba"],
-                nilai["laka_lantas"],
-                sum(nilai.values()),
-            ])
-
-        rows_polri.append([
-            "JUMLAH",
-            total_kolom_polri["krimum"],
-            total_kolom_polri["krimsus"],
-            total_kolom_polri["narkoba"],
-            total_kolom_polri["laka_lantas"],
-            sum(total_kolom_polri.values()),
-        ])
-
-        isi.add_widget(
-            self.buat_tabel(
-                [
-                    "SAT FUNG", "KRIMUM", "KRIMSUS",
-                    "NARKOBA", "LAKA", "JUMLAH",
-                ],
-                rows_polri,
-            )
-        )
-
-        rows_titipan = []
-        total_kolom_titipan = {key: 0 for key, _ in KASUS_FIELDS}
-
-        for row_key, row_name in TITIPAN_ROWS:
-            nilai = self.data["titipan"]["tabel"][row_key]
-
-            for key, _ in KASUS_FIELDS:
-                total_kolom_titipan[key] += nilai[key]
-
-            rows_titipan.append([
-                row_name,
-                nilai["krimum"],
-                nilai["krimsus"],
-                nilai["narkoba"],
-                nilai["laka_lantas"],
-                sum(nilai.values()),
-            ])
-
-        rows_titipan.append([
-            "JUMLAH",
-            total_kolom_titipan["krimum"],
-            total_kolom_titipan["krimsus"],
-            total_kolom_titipan["narkoba"],
-            total_kolom_titipan["laka_lantas"],
-            sum(total_kolom_titipan.values()),
-        ])
-
-        isi.add_widget(
-            self.buat_tabel(
-                [
-                    "TITIPAN", "KRIMUM", "KRIMSUS",
-                    "NARKOBA", "LAKA", "JUMLAH",
-                ],
-                rows_titipan,
             )
         )
 
@@ -916,17 +788,13 @@ class TahananApp(App):
 
         kotak_laporan.bind(
             width=lambda instance, lebar: setattr(
-                instance,
-                "text_size",
-                (lebar, None),
+                instance, "text_size", (lebar, None)
             )
         )
 
         kotak_laporan.bind(
             texture_size=lambda instance, ukuran: setattr(
-                instance,
-                "height",
-                ukuran[1],
+                instance, "height", ukuran[1]
             )
         )
 
@@ -970,7 +838,13 @@ class TahananApp(App):
         kotak_laporan.text = self.buat_teks_laporan()
 
     def salin_laporan(self):
-        Clipboard.copy(self.buat_teks_laporan())
+        teks = self.buat_teks_laporan()
+
+        try:
+            from kivy.core.clipboard import Clipboard
+            Clipboard.copy(teks)
+        except Exception:
+            pass
 
     def buat_teks_laporan(self):
         data = self.data
@@ -985,8 +859,6 @@ class TahananApp(App):
         else:
             salam = "Malam"
 
-        hari_inggris = waktu.strftime("%A")
-
         hari_indonesia = {
             "Monday": "Senin",
             "Tuesday": "Selasa",
@@ -997,11 +869,10 @@ class TahananApp(App):
             "Sunday": "Minggu",
         }
 
-        hari = hari_indonesia.get(hari_inggris, hari_inggris)
+        hari = hari_indonesia.get(waktu.strftime("%A"), waktu.strftime("%A"))
         tanggal = waktu.strftime("%d %B %Y")
 
         blok = data["blok"]
-
         jumlah_blok = [
             sum(blok[str(i)].values())
             for i in range(1, 15)
@@ -1041,12 +912,7 @@ class TahananApp(App):
         total_laki = laki_polri + laki_titipan
         total_perempuan = perempuan_polri + perempuan_titipan
 
-        dewasa = (
-            laki_polri
-            + perempuan_polri
-            + laki_titipan
-            + perempuan_titipan
-        )
+        dewasa = total_laki + total_perempuan
 
         anak = (
             polri["demo"]["anak_lk"]
@@ -1055,7 +921,7 @@ class TahananApp(App):
             + titipan["demo"]["anak_pr"]
         )
 
-        teks = f"""*POLRES KUTAI KARTANEGARA*
+        return f"""*POLRES KUTAI KARTANEGARA*
 
 Selamat {salam} Komandan mohon ijin melaporkan jumlah tahanan di Rutan Polres Kutai Kartanegara pada :
 
@@ -1080,15 +946,15 @@ Dengan rincian tahanan per blok:
 
 Dengan rincian :
 Jumlah Tahanan keseluruhan : {total_blok} Orang
-Laki- laki : {total_laki} orang
+Laki-laki : {total_laki} orang
 Perempuan : {total_perempuan} orang
 Dewasa : {dewasa} orang
 Anak-anak : {anak} orang
 
-Tahanan Polres : {total_polri} orang, Dengan rincian : 
-Tahanan Reskrim : {total_reskrim} orang 
+Tahanan Polres : {total_polri} orang, Dengan rincian :
+Tahanan Reskrim : {total_reskrim} orang
 Tahanan Narkoba : {total_narkoba} orang
-Tahanan Polair : {total_polair} orang 
+Tahanan Polair : {total_polair} orang
 Tahanan Lantas : {total_lantas} orang
 
 Tahanan Titipan : {total_titipan} orang, Dengan rincian :
@@ -1108,13 +974,10 @@ Demikian kami laporkan.
 *DUM*
 *Dokumentasi terlampir*"""
 
-        return teks
-
     def buat_gambar(self, format_gambar):
         try:
             from PIL import Image, ImageDraw, ImageFont
         except ImportError:
-            print("Install Pillow: pip install pillow")
             return
 
         lebar = 1300
@@ -1124,12 +987,8 @@ Demikian kami laporkan.
         gambar = Image.new("RGB", (lebar, tinggi), "white")
         draw = ImageDraw.Draw(gambar)
 
-        try:
-            font_judul = ImageFont.truetype("arial.ttf", 34)
-            font_isi = ImageFont.truetype("arial.ttf", 22)
-        except OSError:
-            font_judul = ImageFont.load_default()
-            font_isi = ImageFont.load_default()
+        font_judul = ImageFont.load_default()
+        font_isi = ImageFont.load_default()
 
         y = 60
         draw.text(
@@ -1217,14 +1076,15 @@ Demikian kami laporkan.
         )
 
         waktu = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nama_file = f"rekap_tahanan_{waktu}.{format_gambar}"
+        nama_file = os.path.join(
+            self.user_data_dir,
+            f"rekap_tahanan_{waktu}.{format_gambar}",
+        )
 
         if format_gambar in ("jpg", "jpeg"):
             gambar.save(nama_file, "JPEG", quality=95)
         else:
             gambar.save(nama_file, "PNG")
-
-        print(f"Gambar tersimpan: {nama_file}")
 
 
 if __name__ == "__main__":
