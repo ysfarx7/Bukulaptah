@@ -42,7 +42,7 @@ jobs:
             gettext \
             patchelf
 
-      - name: Install Buildozer
+      - name: Install Buildozer versi stabil
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install \
