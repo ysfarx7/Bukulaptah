@@ -13,7 +13,8 @@ log_level = 2
 warn_on_root = 1
 
 [android]
-api = 34
+api = 33
 minapi = 24
-archs = arm64-v8a,armeabi-v7a
+archs = arm64-v8a
+ndk = 27b
 accept_sdk_license = True
