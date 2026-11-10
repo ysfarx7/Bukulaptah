@@ -1,0 +1,27 @@
+name: Build Sistem Tahanan APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    container: kivy/buildozer
+
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Bersihkan cache lama
+        run: |
+          rm -rf /root/.buildozer
+          rm -rf /root/.cache/pip
+
+      - name: Build APK
+        run: yes | buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sistem-tahanan-apk
+          path: bin/*.apk
