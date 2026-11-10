@@ -1,11 +1,11 @@
 [app]
-title = Bukulaptah
-package.name = Laptah
+title = Sistem Tahanan
+package.name = sistemtahanan
 package.domain = org.contohku
 source.dir = .
 source.include_exts = py,png,jpg,kv,db,json,txt
 version = 1.0
-requirements = python3,kivy
+requirements = python3,kivy,pillow
 orientation = portrait
 
 [buildozer]
