@@ -1,4 +1,4 @@
-name: Bukulaptah
+name: Build Sistem Tahanan APK
 
 on:
   workflow_dispatch:
@@ -12,11 +12,19 @@ jobs:
       - name: Ambil kode
         uses: actions/checkout@v4
 
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            /root/.buildozer
+            /root/.cache/pip
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+
       - name: Build APK
         run: yes | buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Bukulaptah
+          name: sistem-tahanan-apk
           path: bin/*.apk
